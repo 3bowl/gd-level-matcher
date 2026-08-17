@@ -1,0 +1,13 @@
+# PyInstaller build outputs
+build/
+dist/
+*.spec
+
+# Python virtual environment
+.venv/
+__pycache__/
+
+# Local environment caches and user logs
+comp_cache/
+LOGS/
+temp_logs/
