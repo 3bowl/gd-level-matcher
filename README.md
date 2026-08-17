@@ -12,7 +12,7 @@
 
 ## Getting started
 ### Prerequisites
-* Python 3.x installed on your machine
+* Python 3.8+ installed on your machine (with pip)
 * Modules in `requirements.txt` (install these in a virtual environment)
 * Geometry Dash + an account
 
@@ -21,8 +21,9 @@
    ```bash
    git clone https://github.com/3bowl/gd-level-matcher.git
    ```
-
-2. Run `build.bat` and compile the tool into an `.exe`.
+2. Navigate to the project root folder and create/activate a virtual environment
+3. Run `pip install -r requirements.txt`
+4. Run `build.bat` and compile the tool into an `.exe`.
 
 ## How to use
 1. After compiling with `build.bat`, run `Match.exe` inside the `dist/` folder.
