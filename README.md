@@ -1,6 +1,8 @@
 # GD Level Matcher
 ### A digital archaeology tool for cross-checking object data between Geometry Dash level IDs
 
+[Check out all releases here!](https://github.com/3bowl/gd-level-matcher/releases)
+
 ## Features
 * **Level ID Cross-Checking:** Scan and match level object data between two IDs
 * **Level ID Range-Scanning:** Processes ranges of level IDs to brute-force matches
