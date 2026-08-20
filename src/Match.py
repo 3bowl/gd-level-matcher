@@ -11,28 +11,53 @@ import os
 import json
 import time
 import questionary
+import math
 
 
 ROOT = get_project_root()
 SETTINGS = os.path.join(ROOT, "settings.json")
+# Define all the keys that MUST be present in the settings file
+REQUIRED_SETTINGS_KEYS = [
+    "fullNotifSound",
+    "partialNotifSound",
+    "partialMatchPercentageThreshold",
+]
 FULL_NOTIF_PATH = os.path.join(ROOT, "notif_sounds/Full_match.ogg")
 PARTIAL_NOTIF_PATH = os.path.join(ROOT, "notif_sounds/Partial_match.ogg")
 
-# The match-percentage threshold that must be exceeded for a level to be considered a partial match
-MIN_MATCH_THRESHOLD = 50.0
 
-# Initialize settings.json if nonexistent
-if not os.path.exists(SETTINGS):
-    with open(SETTINGS, "w") as new_settings:
-        json.dump(
-            {
-                "fullNotifSound": True,
-                "partialNotifSound": True
-                }, new_settings
-            )
-# Load the settings.json file
-with open(SETTINGS, "r") as settings:
-    all_settings = json.load(settings)  # GLOBAL SETTINGS HERE
+###################################################################
+def init_settings():
+    """Initializes the settings.
+    If settings.json doesn't already exist, it creates a fresh file. Then, it reads that JSON and returns it for use elsewhere."""
+
+    # Initialize settings.json if nonexistent
+    if not os.path.exists(SETTINGS):
+        with open(SETTINGS, "w") as new_settings:
+            json.dump(
+                {
+                    "fullNotifSound": True,
+                    "partialNotifSound": True,
+                    "partialMatchPercentageThreshold": 50.0,
+                    }, new_settings
+                )
+
+    # Load the settings.json file
+    with open(SETTINGS, "r") as read_settings:
+        settings = json.load(read_settings)
+
+    return settings
+###################################################################
+
+
+all_settings = init_settings()  # GLOBAL SETTINGS HERE
+# Verify the existence of all settings keys, delete and rebuild settings.json if one is missing
+if not all(key in all_settings for key in REQUIRED_SETTINGS_KEYS):
+    os.remove(SETTINGS)
+    all_settings = init_settings()  # OR GLOBAL SETTINGS HERE
+
+# The match-percentage threshold that must be exceeded for a level to be considered a partial match
+min_match_threshold = all_settings["partialMatchPercentageThreshold"]
 
 # NOTE: bundle with this command (activate a venv first):
 # pyinstaller --clean --onefile --hidden-import=_cffi_backend src/Match.py
@@ -40,6 +65,7 @@ with open(SETTINGS, "r") as settings:
 
 def settings_options():
     """Manages the settings."""
+    global min_match_threshold
 
     while True: # Settings loop
         try:
@@ -48,7 +74,8 @@ def settings_options():
                 choices=[
                     f"Full match notification sound: {'ON' if all_settings['fullNotifSound'] else 'OFF'}",
                     f"Partial match notification sound: {'ON' if all_settings['partialNotifSound'] else 'OFF'}",
-                    "-Back to main menu-"
+                    f"Partial match percentage threshold: {all_settings['partialMatchPercentageThreshold']}%",
+                    "-Back to main menu-",
                 ]
             ).ask()
             
@@ -60,6 +87,28 @@ def settings_options():
                 # Flip the boolean state
                 all_settings["partialNotifSound"] = not all_settings["partialNotifSound"]
 
+            elif "Partial match percentage threshold" in choice:
+                # Get user to input new percent
+                threshold_message = (
+                    "Change the partial match percentage threshold (0% - 100%)\n"
+                    "[Closer to 0% = More sensitive]\n"
+                    "[Closer to 100% = More strict]\n"
+                    ">>> "
+                )
+                while True: # Validate user input
+                    try:
+                        new_threshold = float(input(threshold_message))
+                        if 0 <= new_threshold <= 100:
+                            all_settings["partialMatchPercentageThreshold"] = new_threshold
+                            min_match_threshold = all_settings["partialMatchPercentageThreshold"]
+                            break
+                        else:
+                            print("\nInvalid input. Try again.")
+                            continue
+                    except ValueError:
+                        print("\nInvalid input. Try again.")
+                        continue
+
             elif choice == "-Back to main menu-":
                 # Save changes
                 with open(SETTINGS, "w") as settings:
@@ -68,7 +117,10 @@ def settings_options():
                 return
 
         except TypeError:   # The user pressed CTRL+C, but it causes a TypeError here instead
-            return
+            print("\nClosing the program...")
+
+            time.sleep(2)
+            sys.exit(0)
 
 
 def get_listed_obj_data_wrapper(id: int):
@@ -213,7 +265,10 @@ def compare(comp_obj_list: list, floor: int, amount: int):
                 write_log(id, lvl_name, object_string=obj_str)
             else:
                 match_percent = (matched_objs / len(comp_obj_list)) * 100
-                if match_percent >= MIN_MATCH_THRESHOLD:    # We must exceed/equal the threshold first to write the partial find to disk
+
+                # We must exceed/equal the threshold first to write the partial find to disk
+                # Just in case of floating point weirdness, we use math.isclose()
+                if math.isclose(match_percent, min_match_threshold, rel_tol=0.001) or match_percent > min_match_threshold:
 
                     # This is a partial match
                     print("*Partial match found. Saving to LOGS > PARTIAL_FOUND > Partial_match_log.txt...*")
@@ -281,7 +336,10 @@ def compare_downloaded(comp_obj_list: list):
                 write_log(lvl_id, lvl_name, object_string=obj_str)
             else:
                 match_percent = (matched_objs / len(comp_obj_list)) * 100
-                if match_percent >= MIN_MATCH_THRESHOLD:    # We must exceed/equal the threshold first to write the partial find to disk
+
+                # We must exceed/equal the threshold first to write the partial find to disk
+                # Just in case of floating point weirdness, we use math.isclose()
+                if math.isclose(match_percent, min_match_threshold, rel_tol=0.001) or match_percent > min_match_threshold:
 
                     # This is a partial match
                     print("*Partial match found. Saving to LOGS > PARTIAL_FOUND > Partial_match_log.txt...*")
@@ -316,9 +374,15 @@ if __name__ == "__main__":
             if choice == "Scan levels from server":
                 print("--- Use CTRL+C to CLOSE at any time ---\n")
 
-                comparison_obj_id = int(input("Provide the comparison level ID here >>> "))
-                lower_bound = int(input("Starting level ID >>> "))
-                id_amount = int(input("How many IDs are we searching? >>> "))
+                while True: # Validate user input
+                    try:
+                        comparison_obj_id = int(input("Provide the comparison level ID here >>> "))
+                        lower_bound = int(input("Starting level ID >>> "))
+                        id_amount = int(input("How many IDs are we searching? >>> "))
+                        break
+                    except ValueError:
+                        print("\nInvalid input. Try again.")
+                        continue
 
                 # Confirmation
                 user_confirmation = input("You're about to scan levels from the live server. Proceed? (Y/n) >>> ")
@@ -345,7 +409,13 @@ if __name__ == "__main__":
             elif choice == "Scan downloaded levels":
                 print("--- Use CTRL+C to CLOSE at any time ---\n")
 
-                comparison_obj_id = int(input("Provide the comparison level ID here >>> "))
+                while True: # Validate user input
+                    try:
+                        comparison_obj_id = int(input("Provide the comparison level ID here >>> "))
+                        break
+                    except ValueError:
+                        print("\nInvalid input. Try again.")
+                        continue
 
                 # Confirmation
                 user_confirmation = input("You're about to scan all downloaded levels. Proceed? (Y/n) >>> ")
@@ -372,8 +442,14 @@ if __name__ == "__main__":
             elif choice == "Download levels":
                 print("--- Use CTRL+C to CLOSE at any time ---\n")
 
-                lower_bound = int(input("Starting level ID >>> "))
-                id_amount = int(input("How many IDs are we downloading? >>> "))
+                while True: # Validate user input
+                    try:
+                        lower_bound = int(input("Starting level ID >>> "))
+                        id_amount = int(input("How many IDs are we downloading? >>> "))
+                        break
+                    except ValueError:
+                        print("\nInvalid input. Try again.")
+                        continue
 
                 # Confirmation
                 user_confirmation = input("You're about to download levels. Proceed? (Y/n) >>> ")
