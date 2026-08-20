@@ -5,9 +5,12 @@ import re
 import os
 
 
+ROOT = get_project_root()
+
+
 def get_level_data(input_id: str):
     """Takes a level ID, downloads it, gets the data, and returns a tuple in this order:\n
-    Level name (0) | Raw object string (1)\n
+    Level name (0) | Raw object string (1) | Raw level string (2)\n
     If the ID doesn't exist, NoneType is returned instead"""
     # fetch raw level string from RobTop's servers
     lvl_str = fetch(input_id)
@@ -22,12 +25,10 @@ def get_level_data(input_id: str):
     if match:
         level_name = match.group(1)
 
-    return level_name, obj_str
+    return level_name, obj_str, lvl_str
 
 
 if __name__ == "__main__":
-    ROOT = get_project_root()
-
     level_id = input("Provide a GD level ID here >>> ")
     data = get_level_data(level_id)
     if data:

@@ -2,6 +2,8 @@ from root import get_project_root
 from datetime import datetime
 import requests, time, sys, os
 
+
+ROOT = get_project_root()
 url = "http://www.boomlings.com/database/downloadGJLevel22.php"
 
 
@@ -59,8 +61,6 @@ def fetch(level_id: str) -> str:
 
 
 if __name__ == "__main__":
-    ROOT = get_project_root()
-
     lvl_id = "128"
     lvl_string = fetch(lvl_id)
 

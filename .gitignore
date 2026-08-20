@@ -10,4 +10,6 @@ __pycache__/
 # Local environment caches and user logs
 comp_cache/
 LOGS/
+DOWNLOADED/
 temp_logs/
+settings.json
