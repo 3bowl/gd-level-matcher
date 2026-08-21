@@ -3,6 +3,10 @@
 
 [Check out all releases here!](https://github.com/3bowl/gd-level-matcher/releases)
 
+### Credits:
+**u/randomreddituser7474** - For the idea of comparing the object data itself
+**u/PresidentOfYes12** - For the idea of comparing with a niche middle part in case of modifications
+
 ## Features
 * **Level ID Cross-Checking:** Scan and match level object data between two IDs
 * **Level ID Range-Scanning:** Processes ranges of level IDs to brute-force matches
@@ -12,7 +16,7 @@
 * **Notifications:** Includes notification support for when a match is found
 * **Portable Execution:** Easily compile into a standalone `.exe` using the included `build.bat` script
 * **Firewall-triggered shutdown:** Execution exits if it encounters a Cloudflare firewall block
-* **Lost connection persistence:** If the connection is lost, it will try the request again one more time after five seconds
+* **Lost connection persistence:** If the connection is lost, it will try the request again two more times, exiting on the third fail
 
 ## Getting started
 ### Prerequisites

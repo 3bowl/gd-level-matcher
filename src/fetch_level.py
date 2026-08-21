@@ -21,19 +21,20 @@ def fetch(level_id: str) -> str:
     }
 
     print(f"Connecting to server... (ID {level_id})")
-    try:    # Catch exception for no connection. If so, try one more time. If it fails again, quit
-        response = requests.post(url, data=payload, headers=headers)
-    except requests.exceptions.ConnectionError:
-        try:
-            print("Not connected/connection lost, trying again in 5 seconds...")
-
-            time.sleep(5)
+    for connect_try in range(1, 4): # Three connection attempts
+        try:    # Catch exception for no connection. If so, try another. If it fails three times, quit
             response = requests.post(url, data=payload, headers=headers)
+            break
         except requests.exceptions.ConnectionError:
-            print("Not connected/connection lost, closing the program...")
+            if connect_try < 3:
+                print(f"Not connected/connection lost, trying again in 5 seconds... ({connect_try})")
+                time.sleep(5)
+                continue
+            else:
+                print(f"Not connected/connection lost, closing the program... ({connect_try})")
+                time.sleep(5)
+                sys.exit(1)
 
-            time.sleep(5)
-            sys.exit(1)
     response_text = response.text
 
     # the moment of truth
