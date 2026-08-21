@@ -4,8 +4,8 @@
 [Check out all releases here!](https://github.com/3bowl/gd-level-matcher/releases)
 
 ### Credits:
-**u/randomreddituser7474** - For the idea of comparing the object data itself
-**u/PresidentOfYes12** - For the idea of comparing with a niche middle part in case of modifications
+* **u/randomreddituser7474** - For the idea of comparing the object data itself
+* **u/PresidentOfYes12** - For the idea of comparing with a niche middle part in case of modifications
 
 ## Features
 * **Level ID Cross-Checking:** Scan and match level object data between two IDs
@@ -59,6 +59,8 @@ While you could technically attempt a match-up scan using an entire level as the
 (It may be best to match up with a small sample from a more niche part of the level, say, a middle section, which is less likely to be modified in the copy)
 
 Once you make the stripped-down fingerprint of the level you're scanning for, upload it onto your GD account, preferably as unlisted. Feed its level ID into the comparison level ID in the program.
+
+**Note: If you ever update the comparison level in GD, be sure to delete its ID from the `comp_cache/` folder. Forgetting to do so will mean the program will keep reading the outdated version.**
 
 ## Notes and precautions
 ### Here are some things to be aware of when using the program:
