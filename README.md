@@ -6,17 +6,20 @@
 ### Credits:
 * **u/randomreddituser7474** - For the idea of comparing the object data itself
 * **u/PresidentOfYes12** - For the idea of comparing with a niche middle part in case of modifications
+* **u/campfire12324344** and **u/ObtuseBagel** - For the idea of using sets
 
 ## Features
 * **Level ID Cross-Checking:** Scan and match level object data between two IDs
 * **Level ID Range-Scanning:** Processes ranges of level IDs to brute-force matches
 * **Live Server Level Scanning:** Matches levels by fetching from RobTop's servers, good for one-time scans
 * **Downloaded Level Scanning:** Matches levels directly from a downloads folder for repeated, fast scans
+* **Absolute and Relative Matching:** Match blocks to exact coordinates, or by coordinate deltas in relation to an origin
 * **Logging:** Logs every level ID scanned, and puts matched level IDs in a special `FOUND/` directory, containing metadata and object data
 * **Notifications:** Includes notification support for when a match is found
-* **Portable Execution:** Easily compile into a standalone `.exe` using the included `build.bat` script
-* **Firewall-triggered shutdown:** Execution exits if it encounters a Cloudflare firewall block
-* **Lost connection persistence:** If the connection is lost, it will try the request again two more times, exiting on the third fail
+* **Easy Execution:** Easily compile into a standalone `.exe` using the included `build.bat` script
+* **Firewall-Triggered Shutdown:** Execution exits if it encounters a Cloudflare firewall block
+* **Lost Connection Persistence:** The connection tries a maximum of 3 times in the case of connection failures
+* **Request Breaks:** Takes 4-hour breaks after every 10,000 requests
 
 ## Getting started
 ### Prerequisites
@@ -35,12 +38,12 @@
 
 ## How to use
 1. After compiling with `build.bat`, run `Match.exe` inside the `dist/` folder.
-2. The program will give you several options. Pick the one that suits your needs.
+2. The program will give you several options. Pick the ones that suit your needs.
 3. For some options, the program will ask that you supply a comparison level ID. This level ID will act as your fingerprint. The IDs that you're about to scan will attempt to match up with this very comparison level's object data, one object at a time.
 4. Follow the other prompts if applicable.
 5. Let the magic happen! IDs it comes by are logged to `LOGS/`. (Note that downloading levels won't be logged, because the filenames in `DOWNLOADED/` serve the same purpose.)
 6. If the comparison level matches up perfectly with another level, it will be a full match, and will be written to `LOGS/FOUND/`. But if the comparison only partially matches up with another level, it will be a partial match, and will be written to `LOGS/PARTIAL_FOUND/`.
-7. If Cloudflare intercepts, the execution ends and the error log will be written to `LOGS/`.
+7. If Cloudflare intercepts (meaning you got blocked), the execution ends and the error log will be written to `LOGS/`.
 8. If you wish to start fresh on a subsequent run, feel free to delete the log folder(s), the `comp_cache/` folder, or even the `DOWNLOADED/` folder if you want to clear your downloaded levels.
 
 ## Modes overview
@@ -52,6 +55,12 @@ Use this if you're going to be doing repeated scans on the same IDs (say, if you
 
 ### Download levels
 This is how you download levels to the `DOWNLOADED/` folder. You'll be asked to supply the lower bound for the ID range, and the amount of IDs you wish to download. This process will take its time, but when it downloads a level, it stores it safely in the `DOWNLOADED/` folder forever (or until you delete it or the folder). Downloaded levels store the level strings themselves, so be mindful of your device's storage.
+
+### Absolute mode (*FAST*)
+Use this if you want to match objects on the exact same coordinates between two levels.
+
+### Relative mode (*Warning: SLOW*)
+Use this if you want to match objects by pattern and not just by relying on the exact coordinates in space. However, this method is much more resource intensive than absolute matching, because of all the nested looping.
 
 ## How to use the comparison level effectively
 While you could technically attempt a match-up scan using an entire level as the comparison, it's better to instead make a copy of the level yourself and manually strip it down to a very small sample of objects unique to the level. That way, if the program encounters a copy level, it will be less susceptible to any modifications done by the copier.
@@ -65,9 +74,6 @@ Once you make the stripped-down fingerprint of the level you're scanning for, up
 ## Notes and precautions
 ### Here are some things to be aware of when using the program:
 * **"I uploaded a perfect copy of a level as a comparison, but when I try to match it up with the original, it won't detect it. Why?"** Note that some object IDs (including some older ones) have been remapped to different object IDs in later updates. When you save an old level in a modern version, the outdated IDs will remap to the new ones. This can and will affect the matching process, giving false negatives. You have to be careful with the objects present in your fingerprint--that is, only include objects whose IDs never changed since the original level's creation.
-* **Please respect RobTop's servers.** Please do not nullify/mitigate the request cooldown, as that is there for safety purposes. It may seem inconvenient, but if you want to request faster, you'll need to use multiple separate IP addresses. You are responsible for any damage done to the servers when you use this program.
+* **Please respect RobTop's servers.** Please do not nullify/mitigate the request cooldowns, as they are there for safety purposes. It may seem inconvenient, but if you want to request faster, you'll need to use multiple separate IP addresses. You are responsible for any damage done to the servers when you use this program. Also, beware of getting temporarily IP-blocked. The program is designed to mitigate these blocks, but you **can't** guarantee that you'll be 100% safe from them! If you get blocked, wait at least **24 hours** before connecting to RobTop's servers again. Repeatedly requesting to the servers during a block, **even from in-game**, might result in a blacklist from the servers. **USE THIS PROGRAM WITH CAUTION!!!** Scanning downloaded levels is safe since it gets the data from your local machine, but you have to make requests to get the data there in the first place.
 * **There exists a cutoff for partial matches and non-matches.** By default, if at least 50% of the comparison level matches up with the other level, it will be considered a partial match, and will be written to `LOGS/PARTIAL_FOUND/`. But if it's under 50%, it gets treated as an ordinary non-matching level. However, the cutoff (or "partial match percentage threshold") can be altered in settings.
-* **Patience is key!** This program will time to execute. Assuming that each request takes 5 seconds, `1000` IDs will take ~1.4 hours. Again, if you wish to request faster, you'll need to utilize separate IPs. Alternatively, you can download the levels in advance, which is still super slow initially, but the subsequent scans of said downloaded levels becomes lightning fast!
-
-#
-***This and a lot of other things were made with the help of AI.***
+* **Patience is key!** This program will time to execute. Assuming that each request takes 5 seconds, `1000` IDs will take ~1.4 hours, and that doesn't include the occasional 4-hour breaks. Again, if you wish to request faster, you'll need to utilize separate IPs. But the **BETTER** way is actually by downloading the levels in advance, which is still super slow initially, but the subsequent scans of said downloaded levels becomes much faster!

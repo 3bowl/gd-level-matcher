@@ -21,7 +21,7 @@ def get_level_data(input_id: str):
     obj_str = decode(lvl_str)
 
     # get level name
-    match = re.search(r"^1:\d+:2:([\w -]+)", lvl_str)
+    match = re.search(r"^1:\d+:2:([\w -]*)", lvl_str)
     if match:
         level_name = match.group(1)
 

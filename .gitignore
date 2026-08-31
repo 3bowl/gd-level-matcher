@@ -12,4 +12,5 @@ comp_cache/
 LOGS/
 DOWNLOADED/
 temp_logs/
+request_cooldown/
 settings.json

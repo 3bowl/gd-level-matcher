@@ -4,7 +4,9 @@ from decode_level import decode
 from notif_player import play
 from root import get_project_root
 from download import download
-from datetime import datetime
+from fetch_level import COOLDOWN_JSON
+import etc
+from datetime import datetime, timedelta
 from pathlib import Path
 import sys
 import os
@@ -221,7 +223,8 @@ def write_log(id: int, lvl_name: str, exists=True, object_string="", partial_mat
 
 
 def compare(comp_obj_list: list, floor: int, amount: int):
-    """Compares comp_obj_list (comparison object list) to levels from a range of IDs, looping through them 1 by 1, attempting to find matches.\n
+    """Absolute matching.\n
+    Compares comp_obj_list (comparison object list) to levels from a range of IDs, looping through them 1 by 1, attempting to find matches.\n
     comp_obj_list: the list of objects that will be compared with\n
     floor: the lower bound of the ID scan\n
     amount: the amount of IDs to scan"""
@@ -285,7 +288,8 @@ def compare(comp_obj_list: list, floor: int, amount: int):
 
 
 def compare_downloaded(comp_obj_list: list):
-    """Compares comp_obj_list (comparison object list) to levels from /DOWNLOADED, looping through them 1 by 1, attempting to find matches.\n
+    """Absolute matching.\n
+    Compares comp_obj_list (comparison object list) to levels from /DOWNLOADED, looping through them 1 by 1, attempting to find matches.\n
     comp_obj_list: the list of objects that will be compared with"""
     global all_settings
 
@@ -355,8 +359,246 @@ def compare_downloaded(comp_obj_list: list):
     return
 
 
+def relative_compare(comp_obj_list: list, floor: int, amount: int):
+    """Relative matching.\n
+    Compares comp_obj_list (comparison object list) to levels from a range of IDs, looping through them 1 by 1, attempting to find matches.\n
+    comp_obj_list: the list of objects that will be compared with\n
+    floor: the lower bound of the ID scan\n
+    amount: the amount of IDs to scan"""
+    global all_settings
+
+    # Translate comparison object list to usable format, tuples in a list, then setted #
+    # set([(object), (another_object), (a_third_object)])
+    comp_obj_list_w_tuples = etc.list_of_str_to_tuples(comp_obj_list)
+    comp_object_data = set(comp_obj_list_w_tuples)
+    ###
+
+    # Here's the master loop that handles ID ranges for matching
+    ceiling = floor + amount
+    for id in range(floor, ceiling):
+        # nullify these, since they carry over from the previous iteration
+        lvl_name = ""
+        obj_str = ""
+
+        data = get_level_data(id)   # Note how the search level's data won't be converted to lists! We want the raw string data here.
+
+        if data:    # check for the existence of real data
+            lvl_name = data[0]  # current level's name
+            obj_str = data[1]  # current level's object data (in raw string form)
+
+            write_log(id, lvl_name, exists=True)    # exists is set to either True/False, since we haven't matched yet
+        else:
+            write_log(id, lvl_name, exists=False)
+            continue    # continue if nonexistent
+
+        # Translate scanned object string to a usable format, tuples in a list, then setted #
+        # set([(object), (another_object), (a_third_object)])
+        scan_obj_list = list_object_data(obj_str)
+        scan_obj_list_w_tuples = etc.list_of_str_to_tuples(scan_obj_list)
+        scan_object_data = set(scan_obj_list_w_tuples)
+        ###
+
+        # THE OBJECT DATA COMPARISONS TAKE PLACE HERE #
+        best_score = 0  # In the end, the highest score will be the final percentage
+        for comp_origin in comp_object_data:    # Dynamically shifting through the comparison level origins
+
+            comp_deltas = []
+            for obj in comp_object_data:    # Calculate deltas for each origin
+                obj_id = obj[0]
+                delta_x = obj[1] - comp_origin[1]
+                delta_y = obj[2] - comp_origin[2]
+
+                comp_deltas.append(
+                    (obj_id, delta_x, delta_y)
+                    )
+
+            for origin in scan_object_data: # Dynamically shift scan level's origin 1 by 1
+
+                new_score = 0
+                for delta in comp_deltas:   # Get each delta from comparison level and add them relative to the origin
+                    delta_obj_id = delta[0]
+                    delta_x = origin[1] + delta[1]
+                    delta_y = origin[2] + delta[2]
+                    if (delta_obj_id, delta_x, delta_y) in scan_object_data:
+                        new_score += 1
+
+                # Overwrite old best score if a new best is found
+                if new_score > best_score:
+                    best_score = new_score
+        ###############################################
+
+        # After scanning the entire ID...
+        if best_score != 0:
+            # If execution reaches here, there was at least one object that matched up
+            if best_score >= len(comp_obj_list):
+                
+                # This is a full match
+                print(f"***Full match found! Saving to LOGS > FOUND > {id}...***")
+                if all_settings["fullNotifSound"]:
+                    play(FULL_NOTIF_PATH)
+
+                write_log(id, lvl_name, object_string=obj_str)
+            else:
+                match_percent = (best_score / len(comp_obj_list)) * 100
+
+                # We must exceed/equal the threshold first to write the partial find to disk
+                # Just in case of floating point weirdness, we use math.isclose()
+                if math.isclose(match_percent, min_match_threshold, rel_tol=0.001) or match_percent > min_match_threshold:
+
+                    # This is a partial match
+                    print("*Partial match found. Saving to LOGS > PARTIAL_FOUND > Partial_match_log.txt...*")
+                    if all_settings["partialNotifSound"]:
+                        play(PARTIAL_NOTIF_PATH)
+
+                    write_log(id, lvl_name, partial_match=True, percentage=f"{match_percent:.2f}")
+        
+        # If no match score, go to the next iteration without doing anything else
+
+    print("Search finished. (See LOGS)")
+    time.sleep(5)
+    return
+
+
+def relative_compare_downloaded(comp_obj_list: list):
+    """Relative matching.\n
+    Compares comp_obj_list (comparison object list) to levels from /DOWNLOADED, looping through them 1 by 1, attempting to find matches.\n
+    comp_obj_list: the list of objects that will be compared with"""
+    global all_settings
+
+    # Translate comparison object list to usable format, tuples in a list, then setted #
+    # set([(object), (another_object), (a_third_object)])
+    comp_obj_list_w_tuples = etc.list_of_str_to_tuples(comp_obj_list)
+    comp_object_data = set(comp_obj_list_w_tuples)
+    ###
+
+    # Access downloaded directory
+    downloaded_dir = os.path.join(ROOT, "DOWNLOADED/")
+    os.makedirs(downloaded_dir, exist_ok=True)
+
+    # Here's the master loop that handles downloaded levels for matching
+    downloaded_folder_path = Path(downloaded_dir)
+    for level_path in downloaded_folder_path.glob("*.json"):
+        # nullify these, since they carry over from the previous iteration
+        lvl_id = ""
+        lvl_name = ""
+        lvl_str = ""
+        obj_str = ""
+
+        # Load level data dicts from DOWNLOADED/
+        downloaded_level_path = os.path.join(downloaded_dir, level_path)
+        with open(downloaded_level_path, "r") as downloaded:
+            data = json.load(downloaded)
+        
+        lvl_id = data["levelID"]
+        lvl_name = data["levelName"]
+        lvl_str = data["levelString"]
+
+        # Convert lvl_str to decoded object string
+        obj_str = decode(lvl_str)
+
+        # Translate scanned object string to a usable format, tuples in a list, then setted #
+        # set([(object), (another_object), (a_third_object)])
+        scan_obj_list = list_object_data(obj_str)
+        scan_obj_list_w_tuples = etc.list_of_str_to_tuples(scan_obj_list)
+        scan_object_data = set(scan_obj_list_w_tuples)
+        ###
+
+        print(f"Checking ID {lvl_id}...")
+        write_log(lvl_id, lvl_name, exists=True)
+
+        # THE OBJECT DATA COMPARISONS TAKE PLACE HERE #
+        best_score = 0  # In the end, the highest score will be the final percentage
+        for comp_origin in comp_object_data:    # Dynamically shifting through the comparison level origins
+
+            comp_deltas = []
+            for obj in comp_object_data:    # Calculate deltas for each origin
+                obj_id = obj[0]
+                delta_x = obj[1] - comp_origin[1]
+                delta_y = obj[2] - comp_origin[2]
+
+                comp_deltas.append(
+                    (obj_id, delta_x, delta_y)
+                    )
+
+            for origin in scan_object_data: # Dynamically shift scan level's origin 1 by 1
+
+                new_score = 0
+                for delta in comp_deltas:   # Get each delta from comparison level and add them relative to the origin
+                    delta_obj_id = delta[0]
+                    delta_x = origin[1] + delta[1]
+                    delta_y = origin[2] + delta[2]
+                    if (delta_obj_id, delta_x, delta_y) in scan_object_data:
+                        new_score += 1
+
+                # Overwrite old best score if a new best is found
+                if new_score > best_score:
+                    best_score = new_score
+        ###############################################
+
+        # After scanning the entire ID...
+        if best_score != 0:
+            # If execution reaches here, there was at least one object that matched up
+            if best_score >= len(comp_obj_list):
+                
+                # This is a full match
+                print(f"***Full match found! Saving to LOGS > FOUND > {lvl_id}...***")
+                if all_settings["fullNotifSound"]:
+                    play(FULL_NOTIF_PATH)
+
+                write_log(lvl_id, lvl_name, object_string=obj_str)
+            else:
+                match_percent = (best_score / len(comp_obj_list)) * 100
+
+                # We must exceed/equal the threshold first to write the partial find to disk
+                # Just in case of floating point weirdness, we use math.isclose()
+                if math.isclose(match_percent, min_match_threshold, rel_tol=0.001) or match_percent > min_match_threshold:
+
+                    # This is a partial match
+                    print("*Partial match found. Saving to LOGS > PARTIAL_FOUND > Partial_match_log.txt...*")
+                    if all_settings["partialNotifSound"]:
+                        play(PARTIAL_NOTIF_PATH)
+
+                    write_log(lvl_id, lvl_name, partial_match=True, percentage=f"{match_percent:.2f}")
+        
+        # If no match score, go to the next iteration without doing anything else
+
+    print("Search finished. (See LOGS)")
+    time.sleep(5)
+    return
+
+
 if __name__ == "__main__":
+    # Manage the long-term request cooldown timer. Being in the program should force the wait time to stay still
+    directory = os.path.join(ROOT, "request_cooldown")
+    os.makedirs(directory, exist_ok=True)
+    cooldown_path = os.path.join(directory, "cooldown_time.json")
+
+    if not os.path.exists(cooldown_path):
+        # Initialize new data, cooldown JSON data here
+        cooldown_data = COOLDOWN_JSON.copy()    # Use .copy() to avoid mutating the constant directly!
+        with open(cooldown_path, "w") as cool:
+            json.dump(cooldown_data, cool)
+    else:
+        with open(cooldown_path, "r") as cool:
+            # Cooldown JSON data here
+            cooldown_data = json.load(cool)
+
+    # Replace wait time with new wait time, depending on how long the program was closed for last time
+    if cooldown_data["cooldownDateDelta"]:
+        time_left = datetime.fromisoformat(cooldown_data["cooldownDateDelta"]) - datetime.now()
+        seconds_left = time_left.total_seconds()
+        if seconds_left >= 0:
+            cooldown_data["cooldownTimerValue"] = seconds_left
+        else:
+            cooldown_data["cooldownTimerValue"] = 0
+
+        # Replace wait time
+        with open(cooldown_path, "w") as cool:
+            json.dump(cooldown_data, cool)
+    #######################################################
+
     try:
+        exit = False
         while True: # Master loop
             # Let the user decide which mode they want
             choice = questionary.select(
@@ -372,6 +614,20 @@ if __name__ == "__main__":
             ##########################################
 
             if choice == "Scan levels from server":
+                # Let the user choose between absolute and relative
+                choice2 = questionary.select(
+                "Matching mode:",
+                    choices=[
+                    "Absolute",
+                    "Relative",
+                    "-Back to main menu-"
+                    ]
+                ).ask()
+
+                # Going back to the main menu takes precedence over the scan arguments
+                if choice2 == "-Back to main menu-":
+                    continue
+
                 print("--- Use CTRL+C to CLOSE at any time ---\n")
 
                 while True: # Validate user input
@@ -398,15 +654,34 @@ if __name__ == "__main__":
 
                 if comparison_obj_list: # If there is a list
                     print("\nComparing object data...")
-                    compare(comparison_obj_list, lower_bound, id_amount)
+
+                    # Referencing the matching mode choice (choice2)
+                    if choice2 == "Absolute":
+                        compare(comparison_obj_list, lower_bound, id_amount)
+                    elif choice2 == "Relative":
+                        relative_compare(comparison_obj_list, lower_bound, id_amount)
+
                 else:   # If there's None
                     print("Comparison level ID is nonexistent. Closing the program...")
                     time.sleep(5)
-                    sys.exit(1)
 
-                sys.exit(0)
+                exit = True
 
             elif choice == "Scan downloaded levels":
+                # Let the user choose between absolute and relative
+                choice2 = questionary.select(
+                "Matching mode:",
+                    choices=[
+                    "Absolute",
+                    "Relative",
+                    "-Back to main menu-"
+                    ]
+                ).ask()
+
+                # Going back to the main menu takes precedence over the scan arguments
+                if choice2 == "-Back to main menu-":
+                    continue
+
                 print("--- Use CTRL+C to CLOSE at any time ---\n")
 
                 while True: # Validate user input
@@ -431,13 +706,18 @@ if __name__ == "__main__":
 
                 if comparison_obj_list: # If there is a list
                     print("\nComparing object data...")
-                    compare_downloaded(comparison_obj_list)
+
+                    # Referencing the matching mode choice (choice2)
+                    if choice2 == "Absolute":
+                        compare_downloaded(comparison_obj_list)
+                    elif choice2 == "Relative":
+                        relative_compare_downloaded(comparison_obj_list)
+                    
                 else:   # If there's None
                     print("Comparison level ID is nonexistent. Closing the program...")
                     time.sleep(5)
-                    sys.exit(1)
 
-                sys.exit(0)
+                exit = True
 
             elif choice == "Download levels":
                 print("--- Use CTRL+C to CLOSE at any time ---\n")
@@ -463,7 +743,7 @@ if __name__ == "__main__":
                 print("\nDownloading levels from server...")
                 download(lower_bound, id_amount)
 
-                sys.exit(0)
+                exit = True
 
             elif choice == "Settings":
                 settings_options()
@@ -472,10 +752,14 @@ if __name__ == "__main__":
                 print("\nClosing the program...")
 
                 time.sleep(2)
-                sys.exit(0)
+                exit = True
+
+            if exit:
+                break
 
     except KeyboardInterrupt:
         print("\nClosing the program... (See LOGS)")
 
         time.sleep(5)
-        sys.exit(0)
+    
+    etc.exit_program()
