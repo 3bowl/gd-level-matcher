@@ -28,16 +28,30 @@ def block_user(cooldown_path) -> None:
                 cooldown_data["expirationTime"] = cooldown_expiration.isoformat()
                 json.dump(cooldown_data, cool)
 
-        # Negative time means cooldown has expired. If so, proceed like normal
+        # Negative time_left means cooldown has expired. If so, proceed like normal
         time_left = cooldown_expiration - datetime.now()
         if time_left.total_seconds() >= 0:
-            print(f"Cooldown must expire to make another request. Time remaining: {time_left}")
-            time.sleep(time_left.total_seconds())   # The delayer is right here
+            print(f"\n{MAX_REQUESTS} requests exceeded. Cooldown must expire to make another request.")
+
+            # Live countdown in terminal here
+            while True:
+                remaining_seconds = (cooldown_expiration - datetime.now()).total_seconds()
+                if remaining_seconds < 0:
+                    print("\n\n***Cooldown expired!***")
+                    break
+
+                # Break down the total seconds into hours, minutes, and seconds
+                hours, remainder = divmod(int(remaining_seconds), 3600)
+                minutes, seconds = divmod(remainder, 60)
+
+                sys.stdout.write(f"\rTime remaining: {hours:02d}:{minutes:02d}:{seconds:02d}")
+                sys.stdout.flush()
+                time.sleep(1)
 
         return
     
-    else:
-        print("Your cooldown timer is missing. Closing... (see request_cooldown)")
+    else:   # Execution should never reach this point!
+        print("\nYour cooldown timer is missing. Closing... (see request_cooldown)")
         
         time.sleep(5)
         sys.exit(1) # Standard sys.exit() in this scenario
@@ -55,12 +69,20 @@ def fetch(level_id: str) -> str:
     counter_path = os.path.join(directory, "req_counter.json")
     cooldown_path = os.path.join(directory, "cooldown_time.json")
     if os.path.exists(counter_path):
-        with open(counter_path, "r") as counter:
-            request_counter = json.load(counter)[0]
+        try:
+            with open(counter_path, "r") as counter:
+                request_counter = json.load(counter)[0]
+        except json.decoder.JSONDecodeError:
+            # For a corrupted req_counter.json file, rewrite it
+            with open(counter_path, "w") as counter:
+                json.dump([0], counter)
+                request_counter = 0
     else:
+        # For a nonexistent req_counter.json file, write it
         with open(counter_path, "w") as counter:
             json.dump([0], counter)
             request_counter = 0
+
     if not os.path.exists(cooldown_path):
         with open(cooldown_path, "w") as cool:
             # Initialize new data, cooldown JSON data here
