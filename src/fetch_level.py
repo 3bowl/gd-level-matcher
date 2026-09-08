@@ -6,7 +6,7 @@ import etc
 
 
 ROOT = get_project_root()
-MAX_REQUESTS = 10000
+MAX_REQUESTS = 9999     # Would be 10,000, but it counts from 0, so 9,999
 COOLDOWN_JSON = {"cooldownTimerValue": 14400, "cooldownDateDelta": None, "expirationTime": None}
 url = "http://www.boomlings.com/database/downloadGJLevel22.php"
 
@@ -31,7 +31,7 @@ def block_user(cooldown_path) -> None:
         # Negative time_left means cooldown has expired. If so, proceed like normal
         time_left = cooldown_expiration - datetime.now()
         if time_left.total_seconds() >= 0:
-            print(f"\n{MAX_REQUESTS} requests exceeded. Cooldown must expire to make another request.")
+            print(f"\n{MAX_REQUESTS+1} requests reached. Cooldown must expire to make another request.")
 
             # Live countdown in terminal here
             while True:
