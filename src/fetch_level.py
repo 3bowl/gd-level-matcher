@@ -185,12 +185,12 @@ def fetch(level_id: str) -> str:
         # WARNING: DO NOT MITIGATE/REMOVE THIS COOLDOWN TIMER.
         # REQUESTING TOO FAST/MUCH WILL RESULT IN AN IP-BAN.
 
-        # return the string      
-        return level_string
+        # return the string, replacing newlines with spaces (in cases like ID 809914, which features a hacked newline)
+        return level_string.replace("\n", " ")
 
 
 if __name__ == "__main__":
-    lvl_id = "147595223"
+    lvl_id = "809914"
     lvl_string = fetch(lvl_id)
 
     # verify the level's existence before writing
