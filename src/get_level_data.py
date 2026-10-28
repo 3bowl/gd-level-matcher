@@ -3,6 +3,7 @@ from fetch_level import fetch
 from decode_level import decode
 import re
 import os
+import zlib
 
 
 ROOT = get_project_root()
@@ -18,7 +19,10 @@ def get_level_data(input_id: str):
         return
 
     # decode the object data
-    obj_str = decode(lvl_str)
+    try:
+        obj_str = decode(lvl_str)
+    except zlib.error:
+        return  # if object string can't be decoded, return NoneType (looking at you, ID 188622...)
 
     # get level name
     match = re.search(r"^1:\d+:2:([\w -]*)", lvl_str)

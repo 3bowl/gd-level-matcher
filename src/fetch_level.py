@@ -190,7 +190,7 @@ def fetch(level_id: str) -> str:
 
 
 if __name__ == "__main__":
-    lvl_id = "809914"
+    lvl_id = "188622"
     lvl_string = fetch(lvl_id)
 
     # verify the level's existence before writing
