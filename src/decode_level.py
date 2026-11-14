@@ -19,7 +19,7 @@ def decode(level_str: str) -> str:
     except zlib.error:  # some levels may use a different compression system
         decompressed_obj_str = zlib.decompress(decoded_obj_str)
 
-    # Step 4: decode bytes into string
-    obj_str = decompressed_obj_str.decode("utf-8")
+    # Step 4: decode bytes into string ("backslashreplace" is needed because ID 380863 was causing UnicodeDecodeError)
+    obj_str = decompressed_obj_str.decode("utf-8", errors="backslashreplace")
 
     return obj_str
